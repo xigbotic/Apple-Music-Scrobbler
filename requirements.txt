@@ -1,0 +1,7 @@
+pylast
+winsdk
+customtkinter
+Pillow
+asyncio
+
+python-dotenv
