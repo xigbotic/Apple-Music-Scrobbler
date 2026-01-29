@@ -42,19 +42,26 @@ class MainApp:
         self.last_pos = 0
         self.last_now_playing_ping = 0
         # self.ui.protocol("WM_DELETE_WINDOW", self.on_close)
-        self.add_to_startup()
+        self.ui.startup_callback = self.update_startup_registry
         
-    def add_to_startup(self):
-        """Registers the application in Windows Startup Registry."""
+    def update_startup_registry(self, enabled):
+        """Adds or removes the app from the Windows Startup Registry."""
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-        app_name = "JuiceScrobblerApp"
+        app_name = "XignoticScrobbler"
         try:
-            path = os.path.realpath(sys.executable if getattr(sys, 'frozen', False) else __file__)
             key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)
-            winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, path)
+            if enabled:
+                path = os.path.realpath(sys.executable if getattr(sys, 'frozen', False) else __file__)
+                winreg.SetValueEx(key, app_name, 0, winreg.REG_SZ, path)
+                print("Registry: Startup Enabled")
+            else:
+                try:
+                    winreg.DeleteValue(key, app_name)
+                    print("Registry: Startup Disabled")
+                except FileNotFoundError: pass
             winreg.CloseKey(key)
         except Exception as e:
-            print(f"Startup Setup Error: {e}")
+            print(f"Registry Error: {e}")
 
     def start_tracker_thread(self):
         thread = threading.Thread(target=self.run_async_tracker, daemon=True)

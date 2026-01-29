@@ -16,6 +16,7 @@ class AppUI(ctk.CTk):
         self.auth_handler = auth_handler
         self.tracker_callback = tracker_start_callback
         self.current_raw_img = None
+        self.auth_handler.get_cached_session()
         
         # 2. Windows Taskbar Branding
         try:
@@ -64,9 +65,19 @@ class AppUI(ctk.CTk):
         else:
             self.status_label.configure(text="STATUS: DISCONNECTED", text_color="#FF3B3B")
 
+    def toggle_startup(self):
+        enabled = self.startup_var.get()
+        self.auth_handler.start_with_windows = enabled
+        self.auth_handler.save_session()
+        # Call back to main to update registry
+        if hasattr(self, 'startup_callback'):
+            self.startup_callback(enabled)
+
     def setup_ui(self):
         """Standard UI Setup with clean transparency and modern rounding."""
         
+        self.container = ctk.CTkFrame(self, fg_color="transparent")
+        self.container.place(x=0, y=0, relwidth=1, relheight=1)
         # --- TOP SECTION ---
         self.top_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.top_frame.pack(fill="x", padx=30, pady=(25, 0))
@@ -82,7 +93,7 @@ class AppUI(ctk.CTk):
         # --- BOTTOM SECTION (Packed first to reserve space) ---
         
         self.footer_label = ctk.CTkLabel(
-            self, text="v0.0.5 • Developed by Xignotic", 
+            self, text="v0.0.6 • Developed by Xignotic", 
             font=(self.font_family, 9, "bold"), 
             text_color="#FFFFFF",
             fg_color="transparent"
@@ -107,6 +118,30 @@ class AppUI(ctk.CTk):
             command=self.login
         )
         self.login_btn.pack(side="bottom", pady=(10, 10), padx=35, fill="x")
+
+        self.startup_var = ctk.BooleanVar(value=self.auth_handler.start_with_windows)
+
+        # 2. Create the container
+        self.startup_container = ctk.CTkFrame(self.container, fg_color="transparent")
+        self.startup_container.pack(side="bottom", pady=(5, 10))
+
+        self.startup_check = ctk.CTkCheckBox(
+            self.container, 
+            text="START WITH WINDOWS", 
+            variable=self.startup_var,
+            command=self.toggle_startup,
+            font=(self.font_family, 9, "bold"),
+            checkbox_width=18,
+            checkbox_height=18,
+            corner_radius=6,
+            border_width=2,            # Keeps the outline visible
+            fg_color="#010101",        # Use nearly black instead of 'transparent'
+            border_color="#FFFFFF",    # Permanent white outline
+            checkmark_color="#FFFFFF", # White tick mark
+            text_color="#FFFFFF",
+            hover_color="#1A1A1A"
+        )
+        self.startup_check.pack(pady=(5, 15))
 
         # --- MIDDLE SECTION (The Music Card) ---
         self.card = ctk.CTkFrame(

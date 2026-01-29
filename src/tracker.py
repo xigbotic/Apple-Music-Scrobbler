@@ -29,7 +29,10 @@ class MediaTracker:
         for session in sessions:
             try:
                 app_id = session.source_app_user_model_id.lower()
-                if any(keyword in app_id for keyword in ["apple", "music", "itunes"]):
+                
+                # We remove the generic "music" keyword and use specific Apple IDs.
+                # This explicitly ignores Microsoft.ZuneMusic (Media Player).
+                if "applemusic" in app_id or "itunes" in app_id:
                     current_session = session
                     break
             except:

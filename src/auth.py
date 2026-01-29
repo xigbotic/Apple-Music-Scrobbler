@@ -17,6 +17,7 @@ class LastFMAuthenticator:
         self.network = pylast.LastFMNetwork(api_key=self.api_key, api_secret=self.api_secret)
         self.session_key = None
         self.total_scrobbles = 0
+        self.start_with_windows = False
 
     def get_cached_session(self):
         if os.path.exists(CONFIG_FILE):
@@ -25,6 +26,7 @@ class LastFMAuthenticator:
                     data = json.load(f)
                     self.session_key = data.get('session_key')
                     self.total_scrobbles = data.get('total_scrobbles', 0)
+                    self.start_with_windows = data.get('start_with_windows', False)
                     if self.session_key:
                         self.network.session_key = self.session_key
                         return True
@@ -58,7 +60,8 @@ class LastFMAuthenticator:
         with open(CONFIG_FILE, 'w') as f:
             json.dump({
                 'session_key': self.session_key,
-                'total_scrobbles': self.total_scrobbles
+                'total_scrobbles': self.total_scrobbles,
+                'start_with_windows': getattr(self, 'start_with_windows', False)
             }, f)
 
     def get_network(self):
