@@ -12,32 +12,27 @@ class AppUI(ctk.CTk):
     def __init__(self, auth_handler, tracker_start_callback):
         super().__init__()
 
-        # 1. Attributes
         self.auth_handler = auth_handler
         self.tracker_callback = tracker_start_callback
         self.current_raw_img = None
         self.auth_handler.get_cached_session()
-        
-        # 2. Windows Taskbar Branding
+
         try:
             myappid = 'Xignotic.AppleMusicScrobbler.004' 
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         except:
             pass
 
-        # 3. UI Styling Config
         self.bg_color = "#000000"  
         self.card_color = "#0A0A0A" 
         self.border_color = "#1A1A1A"
         self.font_family = "Segoe UI Variable Display"
 
-        # 4. Window Setup
         self.title("Apple Music Scrobbler")
         self.geometry("380x720") 
         self.configure(fg_color=self.bg_color)
         self.resizable(False, False)
 
-        # 5. Icon Logic
         if getattr(sys, 'frozen', False):
             self.icon_path = os.path.join(sys._MEIPASS, "icon.ico")
         else:
@@ -52,10 +47,8 @@ class AppUI(ctk.CTk):
         else:
             self.tray_img = Image.new('RGB', (64, 64), color=(0, 0, 0))
 
-        # 6. Build UI
         self.setup_ui()
-        
-        # 7. Lifecycle
+
         self.protocol('WM_DELETE_WINDOW', self.hide_window)
         self.tray_icon = None
 
@@ -69,7 +62,6 @@ class AppUI(ctk.CTk):
         enabled = self.startup_var.get()
         self.auth_handler.start_with_windows = enabled
         self.auth_handler.save_session()
-        # Call back to main to update registry
         if hasattr(self, 'startup_callback'):
             self.startup_callback(enabled)
 
@@ -93,7 +85,7 @@ class AppUI(ctk.CTk):
         # --- BOTTOM SECTION (Packed first to reserve space) ---
         
         self.footer_label = ctk.CTkLabel(
-            self, text="v0.0.6 • Developed by Xignotic", 
+            self, text="v0.0.7 • Developed by Xignotic", 
             font=(self.font_family, 9, "bold"), 
             text_color="#FFFFFF",
             fg_color="transparent"
@@ -121,7 +113,6 @@ class AppUI(ctk.CTk):
 
         self.startup_var = ctk.BooleanVar(value=self.auth_handler.start_with_windows)
 
-        # 2. Create the container
         self.startup_container = ctk.CTkFrame(self.container, fg_color="transparent")
         self.startup_container.pack(side="bottom", pady=(5, 10))
 
@@ -134,16 +125,16 @@ class AppUI(ctk.CTk):
             checkbox_width=18,
             checkbox_height=18,
             corner_radius=6,
-            border_width=2,            # Keeps the outline visible
-            fg_color="#010101",        # Use nearly black instead of 'transparent'
-            border_color="#FFFFFF",    # Permanent white outline
-            checkmark_color="#FFFFFF", # White tick mark
+            border_width=2,            
+            fg_color="#010101",        
+            border_color="#FFFFFF",    
+            checkmark_color="#FFFFFF", 
             text_color="#FFFFFF",
             hover_color="#1A1A1A"
         )
         self.startup_check.pack(pady=(5, 15))
 
-        # --- MIDDLE SECTION (The Music Card) ---
+        # --- MIDDLE SECTION---
         self.card = ctk.CTkFrame(
             self, 
             fg_color=self.card_color, 
@@ -207,16 +198,12 @@ class AppUI(ctk.CTk):
     def update_track_info(self, artist, track, album, is_playing, thumbnail_stream=None):
         """Updates UI text, cover art, and playback status labels."""
         if track and track != "NO MEDIA":
-            # 1. Update text only if it has changed (Saves CPU)
             if self.track_label.cget("text") != track:
                 self.track_label.configure(text=track)
                 self.artist_label.configure(text=artist)
                 self.album_label.configure(text=album if album else "")
-
-                # 2. Optimized Image Loading (Prevents Memory Leak)
                 if thumbnail_stream:
                     try:
-                        # Clear old reference to help GC (Garbage Collection)
                         self.cover_label.configure(image=None)
                         self.cover_label.image = None
                         
@@ -230,10 +217,8 @@ class AppUI(ctk.CTk):
                 else:
                     self.set_default_cover()
 
-            # 3. Playback Status Logic
             curr_status = self.scrobble_status.cget("text")
             if is_playing:
-                # Don't overwrite "QUALIFIED" if it's already showing
                 if "QUALIFIED" not in curr_status:
                     self.scrobble_status.configure(text="● PLAYING", text_color="#00FF7F")
             else:
@@ -241,7 +226,6 @@ class AppUI(ctk.CTk):
             
 
         else:
-            # Fallback when no music is detected
             if self.track_label.cget("text") != "NO MEDIA":
                 self.track_label.configure(text="NO MEDIA")
                 self.artist_label.configure(text="System Standby")

@@ -15,7 +15,6 @@ from dotenv import load_dotenv
 if getattr(sys, 'frozen', False):
     base_path = sys._MEIPASS
 else:
-    # Running as script
     base_path = os.path.dirname(os.path.dirname(__file__))
 env_path = os.path.join(base_path, ".env")
 load_dotenv(dotenv_path=env_path)
@@ -41,8 +40,8 @@ class MainApp:
         self.last_state = None
         self.last_pos = 0
         self.last_now_playing_ping = 0
-        # self.ui.protocol("WM_DELETE_WINDOW", self.on_close)
         self.ui.startup_callback = self.update_startup_registry
+        self.auth.get_cached_session() 
         
     def update_startup_registry(self, enabled):
         """Adds or removes the app from the Windows Startup Registry."""
@@ -76,14 +75,11 @@ class MainApp:
         """
         Main heartbeat triggered by tracker.py every ~1 second.
         """
-        # 1. Update Progress Bar (Real-time synchronization with Windows Media)
         if duration > 0:
             prog = min(1.0, current_pos / duration)
             self.ui.after(0, lambda p=prog: self.ui.progress.set(p))
 
-        # 2. Loop/Repeat Detection
         if self.pending_scrobble and track == self.pending_scrobble['track']:
-            # If song position resets (user clicked back or song looped)
             if current_pos < (self.last_pos - 10):
                 if self.ready_to_submit:
                     self.submit_final_scrobble(self.pending_scrobble)
@@ -102,27 +98,22 @@ class MainApp:
             self.current_scrobble_track = None
             return
 
-        # 3. UI Update Logic (Only refresh text/image if metadata actually changed)
         if track != self.current_scrobble_track or is_playing != self.last_state:
             self.ui.after(0, lambda: self.ui.update_track_info(artist, track, album, is_playing, thumbnail))
             self.last_state = is_playing
-            self.current_scrobble_track = track
 
         if track:
             self.ui.update_tray_tooltip(f"{track} - {artist}")
         else:
             self.ui.update_tray_tooltip("Apple Music Scrobbler")
-        
-        # 4. Handle Scrobble Qualification
+
         self.handle_scrobble_logic(artist, track, album, is_playing, duration, current_pos)
 
     def handle_scrobble_logic(self, artist, track, album, is_playing, duration, current_pos):
         """Logic based on real system position rather than estimated timers."""
         real_time_now = int(time.time())
 
-        # Check for new track start
         if not self.pending_scrobble or self.pending_scrobble['track'] != track:
-            # Submit previous track if it was qualified before switching
             if self.pending_scrobble and self.ready_to_submit:
                 self.submit_final_scrobble(self.pending_scrobble)
 
@@ -139,7 +130,6 @@ class MainApp:
             if self.auth.session_key and track:
                 self.executor.submit(self.safe_now_playing, artist, track, album)
 
-        # Qualification check: 4 minutes or 50% of the song (Last.fm standard)
         target = max(30, min(240, duration / 2)) if duration > 0 else 30
         
         if not self.ready_to_submit and current_pos >= target:
@@ -147,17 +137,15 @@ class MainApp:
             self.ui.after(0, lambda: self.ui.scrobble_status.configure(
                 text="● SCROBBLE QUALIFIED", text_color="cyan"
             ))
-            # Automatically revert status to "PLAYING" after 5 seconds
             self.ui.after(5000, self.reset_status_text)
 
-        # Periodic Now Playing Ping (Every 2 minutes)
         if is_playing and (time.monotonic() - self.last_now_playing_ping > 120):
             self.executor.submit(self.safe_now_playing, artist, track, album)
             self.last_now_playing_ping = time.monotonic()
 
     def reset_status_text(self):
         """Cleanly reverts the UI status text if still playing."""
-        if self.last_state: # If is_playing is True
+        if self.last_state: 
             self.ui.scrobble_status.configure(text="● PLAYING", text_color="#00FF7F")
 
     def safe_now_playing(self, artist, track, album):

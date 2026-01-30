@@ -1,5 +1,5 @@
 import asyncio
-import io # REQUIRED for thumbnail processing
+import io
 import os
 from winsdk.windows.storage.streams import Buffer, DataReader
 from winsdk.windows.media.control import (
@@ -17,7 +17,7 @@ class MediaTracker:
         self.still_count = 0
         self.callback = callback_func
         self.cached_thumbnail = None
-        self.manager = None # Cache the manager
+        self.manager = None
 
     async def get_media_info(self):
         if not self.manager:
@@ -29,9 +29,6 @@ class MediaTracker:
         for session in sessions:
             try:
                 app_id = session.source_app_user_model_id.lower()
-                
-                # We remove the generic "music" keyword and use specific Apple IDs.
-                # This explicitly ignores Microsoft.ZuneMusic (Media Player).
                 if "applemusic" in app_id or "itunes" in app_id:
                     current_session = session
                     break
@@ -44,12 +41,10 @@ class MediaTracker:
                 if self.callback: self.callback(None, None, None, False, 0, 0, None)
             return
 
-        # EXTRACT REAL POSITION DATA
         timeline = current_session.get_timeline_properties()
         duration = timeline.end_time.total_seconds()
         current_pos = timeline.position.total_seconds()
 
-        # Motion detection
         if current_pos != self.last_position:
             is_playing_now = True
             self.still_count = 0 
@@ -63,9 +58,7 @@ class MediaTracker:
             raw_artist = media_properties.artist if media_properties.artist else "Unknown Artist"
             raw_album = media_properties.album_title
 
-            # Only fetch thumbnail and process metadata if the track title changed
             if title != self.current_track:
-                # 1. Handle Thumbnail Memory Safely
                 if media_properties.thumbnail:
                     try:
                         thumb_stream = await media_properties.thumbnail.open_read_async()
@@ -78,13 +71,11 @@ class MediaTracker:
                             reader.read_bytes(byte_array)
                             self.cached_thumbnail = io.BytesIO(byte_array)
                         
-                        thumb_stream.close() # Prevents memory leak
+                        thumb_stream.close()
                     except:
                         self.cached_thumbnail = None
                 else:
                     self.cached_thumbnail = None
-
-                # 2. Split Artist and Album (Fixes the "same line" issue)
                 display_artist = raw_artist
                 display_album = raw_album
 
@@ -101,7 +92,6 @@ class MediaTracker:
                 self.current_artist = display_artist
                 self.current_album = display_album
 
-            # Send update to main.py
             if self.callback:
                 if self.cached_thumbnail: self.cached_thumbnail.seek(0)
                 self.callback(self.current_artist, self.current_track, self.current_album, is_playing_now, duration, current_pos, self.cached_thumbnail)
@@ -117,5 +107,4 @@ class MediaTracker:
                 await asyncio.sleep(sleep_time)
                 
             except Exception as e:
-                # Log error and wait before retrying
                 await asyncio.sleep(5)
